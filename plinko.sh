@@ -1,5 +1,5 @@
 #!/bin/bash
-# Made by Elvie for the Horse Plinko Cyber Challenge, Fall 2024
+# Made by Elvie for the Horse Plinko Cyber Challenge, Fall 2024 - Cargo Box
 
 # Lock the root account
 passwd -l root
@@ -16,18 +16,12 @@ apt install ufw -y
 # Deny dangerous ports (e.g., Metasploit default port)
 ufw deny 4444
 
-# Set firewall rules for necessary services (adjust per Plinko requirements)
-ufw allow 'Apache Secure' # HTTPS
-ufw allow OpenSSH
-ufw allow ftp
-ufw allow http
-ufw allow 20/tcp  # FTP data transfer
-ufw allow 990/tcp # FTP secure control connection
-ufw allow 3306/tcp # MySQL
+# Set firewall rules for necessary services on Cargo box
+ufw allow OpenSSH       # Allow SSH access
+ufw allow ftp           # Allow FTP
+ufw allow 20/tcp        # FTP data transfer
+ufw allow 990/tcp       # FTP secure control connection
 ufw enable
-
-# Secure Apache (important for the MediaWiki site)
-sudo chown -R root:root /etc/apache2
 
 # Remove nopasswdlogon group to prevent passwordless logins
 echo "Removing nopasswdlogon group"
@@ -36,7 +30,7 @@ sed -i -e '/nopasswdlogin/d' /etc/group
 # Set correct permissions on sensitive files
 chmod 644 /etc/passwd
 
-# Backup file needed for scoring and set immutable attribute
+# Backup the scoring file and set immutable attribute
 cp /files/ImaHorse.png ~
 cp /files/ImaHorse.png /bin
 cp /files/ImaHorse.png /media
@@ -61,15 +55,41 @@ service vsftpd restart
 
 # Update the system and install useful monitoring tools
 apt update -y
-apt install ranger -y
 apt install fail2ban -y
 apt install tmux -y
 apt install curl -y
 apt install whowatch -y
+apt install unattended-upgrades -y
+dpkg-reconfigure --priority=low unattended-upgrades
 
-# Download pspy for process monitoring
-wget https://github.com/DominicBreuker/pspy/releases/download/v1.2.1/pspy64
-chmod +x pspy64
+# Disable USB storage to prevent unauthorized devices
+echo "blacklist usb-storage" >> /etc/modprobe.d/blacklist.conf
+update-initramfs -u
+
+# Disable IPv6 to reduce the attack surface
+echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf
+sysctl -p
+
+# Kernel hardening with sysctl
+echo "net.ipv4.conf.all.rp_filter = 1" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.accept_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.secure_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.log_martians = 1" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_syncookies = 1" >> /etc/sysctl.conf
+sysctl -p
+
+# Install AIDE for file integrity monitoring
+apt install aide -y
+aideinit
+mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+
+# Install auditd for system auditing
+apt install auditd -y
+systemctl enable auditd
+auditctl -w /etc/passwd -p wa -k passwd_changes
+auditctl -w /etc/shadow -p wa -k shadow_changes
+auditctl -w /etc/group -p wa -k group_changes
 
 # Change passwords for all non-system users (IDs >= 999)
 for user in $( sed 's/:.*//' /etc/passwd);
