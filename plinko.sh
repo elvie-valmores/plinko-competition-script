@@ -79,11 +79,6 @@ echo "net.ipv4.conf.all.log_martians = 1" >> /etc/sysctl.conf
 echo "net.ipv4.tcp_syncookies = 1" >> /etc/sysctl.conf
 sysctl -p
 
-# Install AIDE for file integrity monitoring
-apt install aide -y
-aideinit
-mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
-
 # Install auditd for system auditing
 apt install auditd -y
 systemctl enable auditd
