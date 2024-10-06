@@ -50,8 +50,8 @@ sed -i -e '/nopasswdlogin/d' /etc/group
 chmod 644 /etc/passwd
 
 # Ensure the scoring file exists and is immutable for anonymous FTP access
-chmod 644 /var/ftp/ImaHorse.png
-chattr +i /var/ftp/ImaHorse.png
+chmod 644 /var/ftp/ImaHorse.jpg
+chattr +i /var/ftp/ImaHorse.jpg
 
 # Configure vsftpd for scoring user (FTP service setup)
 echo "hkeating" >> /etc/vsftpd.userlist
