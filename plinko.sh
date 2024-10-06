@@ -4,23 +4,42 @@
 # Lock the root account
 passwd -l root
 
+# Remove all SSH keys from all authorized_keys files
+rm -f /root/.ssh/authorized_keys
+rm -f /home/*/.ssh/authorized_keys
+
 # SSH hardening
 echo "PermitRootLogin no" >> /etc/ssh/sshd_config
 echo "Protocol 2" >> /etc/ssh/sshd_config
 # SSH whitelist - only allow hkeating and plinktern
 echo "AllowUsers hkeating plinktern" >> /etc/ssh/sshd_config
 
+# Additional SSH security settings
+echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+echo "MaxAuthTries 3" >> /etc/ssh/sshd_config
+echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
+echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
+echo "AllowTcpForwarding no" >> /etc/ssh/sshd_config
+
 # Install necessary packages
 apt install ufw -y
 
-# Deny dangerous ports (e.g., Metasploit default port)
-ufw deny 4444
-
 # Set firewall rules for necessary services on Cargo box
-ufw allow OpenSSH       # Allow SSH access
-ufw allow ftp           # Allow FTP
-ufw allow 20/tcp        # FTP data transfer
-ufw allow 990/tcp       # FTP secure control connection
+# Reset UFW rules to default (deny all incoming, allow all outgoing)
+ufw reset
+
+# Set default policies
+ufw default deny incoming  # Deny all incoming traffic by default
+ufw default allow outgoing  # Allow all outgoing traffic by default
+
+# Allow necessary ports
+ufw allow OpenSSH       # Allow SSH access (port 22)
+ufw allow ftp           # Allow FTP (port 21)
+ufw allow 20/tcp        # Allow FTP data transfer (port 20)
+ufw allow 990/tcp       # Allow FTPS secure control connection (port 990)
+ufw allow 3306/tcp      # Allow MySQL (if required)
+
+# Enable UFW firewall
 ufw enable
 
 # Remove nopasswdlogon group to prevent passwordless logins
@@ -30,12 +49,9 @@ sed -i -e '/nopasswdlogin/d' /etc/group
 # Set correct permissions on sensitive files
 chmod 644 /etc/passwd
 
-# Backup the scoring file and set immutable attribute
-cp /files/ImaHorse.png ~
-cp /files/ImaHorse.png /bin
-cp /files/ImaHorse.png /media
-cp /files/ImaHorse.png /var
-chattr +i /files/ImaHorse.png
+# Ensure the scoring file exists and is immutable for anonymous FTP access
+chmod 644 /var/ftp/ImaHorse.png
+chattr +i /var/ftp/ImaHorse.png
 
 # Configure vsftpd for scoring user (FTP service setup)
 echo "hkeating" >> /etc/vsftpd.userlist
@@ -59,32 +75,10 @@ apt install fail2ban -y
 apt install tmux -y
 apt install curl -y
 apt install whowatch -y
-apt install unattended-upgrades -y
-dpkg-reconfigure --priority=low unattended-upgrades
 
-# Disable USB storage to prevent unauthorized devices
-echo "blacklist usb-storage" >> /etc/modprobe.d/blacklist.conf
-update-initramfs -u
-
-# Disable IPv6 to reduce the attack surface
-echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
-echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf
-sysctl -p
-
-# Kernel hardening with sysctl
-echo "net.ipv4.conf.all.rp_filter = 1" >> /etc/sysctl.conf
-echo "net.ipv4.conf.all.accept_redirects = 0" >> /etc/sysctl.conf
-echo "net.ipv4.conf.all.secure_redirects = 0" >> /etc/sysctl.conf
-echo "net.ipv4.conf.all.log_martians = 1" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_syncookies = 1" >> /etc/sysctl.conf
-sysctl -p
-
-# Install auditd for system auditing
-apt install auditd -y
-systemctl enable auditd
-auditctl -w /etc/passwd -p wa -k passwd_changes
-auditctl -w /etc/shadow -p wa -k shadow_changes
-auditctl -w /etc/group -p wa -k group_changes
+# Download pspy for process monitoring
+wget https://github.com/DominicBreuker/pspy/releases/download/v1.2.1/pspy64
+chmod +x pspy64
 
 # Change passwords for all non-system users (IDs >= 999)
 for user in $( sed 's/:.*//' /etc/passwd);
