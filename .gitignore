@@ -1,0 +1,31 @@
+# Never commit anything pulled off a competition box
+*.sql
+*.dump
+*.bak
+backup/
+backups/
+hpcc-backup-*/
+HPCC-Backup/
+vault/
+
+# Secrets
+.my.cnf
+*.pem
+*.key
+*_rsa
+authorized_keys
+creds*
+passwords*
+*.credlist
+
+# The onboarding packets are the organizers' to distribute, not mine
+*.pdf
+
+# Local scratch
+notes.md
+scratch/
+*.local
+*.swp
+*~
+.DS_Store
+Thumbs.db
